@@ -28,9 +28,34 @@
 // I include this file to throw runtime errors, but you can also use it to output debugging information.
 #include <iostream>
 
-int resolution = 64;					// resolution of the output image (you can add a user interface element to change this)
+#include "ray.h"
+#include "vec3.h"
+
+#include <cmath>
+
+int resolution = 500;					// resolution of the output image (you can add a user interface element to change this)
 float* output_image_ptr = nullptr;		// pointer to the output image data (if you change the resolution make sure to change this!)
 float frame_seconds = 0.0f;		// time it takes to go through the main "game" loop (directly translates to frame rate or fps)
+
+// camera parameters
+auto focal_length = 1.0;
+auto viewport_height = 2.0;
+auto viewport_width = 2.0;
+point3 camera_center = point3(0, 0, 0);
+
+// horizontal and vertical axes
+vec3 viewport_u = vec3(viewport_width, 0, 0);
+vec3 viewport_v = vec3(0, -viewport_height, 0);
+
+// delta pixel size
+auto pixel_delta_u = viewport_u / resolution;
+auto pixel_delta_v = viewport_v / resolution;
+
+// view port upper left corner
+point3 viewport_upper_left = camera_center - viewport_u / 2 - viewport_v / 2 - vec3(0, 0, focal_length);
+
+// Pixel 0, 0
+auto pixel00_loc = viewport_upper_left + 0.5 * (pixel_delta_u + pixel_delta_v);
 
 /*
  * Create a placeholder image that's simple, but looks interesting enough so that you know the code is working correctly.
@@ -47,6 +72,72 @@ void DummyImage() {
 			output_image_ptr[idx + 1] = g;
 			output_image_ptr[idx + 2] = b;
 			output_image_ptr[idx + 3] = 1.0f;
+		}
+	}
+}
+
+double HitSphere(const point3& s, float r, const ray& rt) {
+	auto p = rt.origin();
+	auto v = rt.direction();
+
+	auto a = dot(v, v);
+	auto b = 2.0 * dot(v, s-p);
+	auto c = dot(s - p, s - p) - r * r;
+
+	auto h = b * b - 4 * a * c;
+
+	if (h < 0)
+	{
+		return -1.0;
+	}
+
+	return (b - std::sqrt(h)) / (2.0 * a);
+}
+
+// r(t) = a + t*b
+// s(t) = (s - a)(s - a) - r^2 = 0
+
+color RayColor(const ray& r) {
+	auto t = HitSphere(point3(0, 0, -1), 0.5, r);
+	
+	if (t > 0.0) {
+		vec3 normal = unit_vector(r.at(t) - point3(0, 0, -1));
+		return 0.5 * (normal + 1.0);
+	}
+
+	// BlendedValue = (1-a)*StartValue + a*EndValue
+	auto unit_direction = unit_vector(r.direction());
+
+	auto a = 0.5 * (unit_direction.y() + 1.0);
+
+	auto start_color = color(1.0, 1.0, 1.0);		// white
+	auto end_color = color(0.5, 0.7, 1.0);		// light blue
+
+	return (1.0 - a) * start_color + a * end_color;
+}
+
+void DrawSquare() {
+	for (int yi = 0; yi < resolution; yi++) {							// iterate through each pixel in the image
+		for (int xi = 0; xi < resolution; xi++) {
+			auto pixel_center = pixel00_loc + xi * pixel_delta_u + yi * pixel_delta_v;
+			auto ray_direction = pixel_center - camera_center;
+			ray r = ray(camera_center, ray_direction);
+
+			auto pixel = RayColor(r);
+
+			int idx = yi * resolution * 4 + xi * 4;						// calculate the starting position for the current pixel
+			output_image_ptr[idx + 0] = pixel.x();						// update the red
+			output_image_ptr[idx + 1] = pixel.y();
+			output_image_ptr[idx + 2] = pixel.z();
+			output_image_ptr[idx + 3] = 1.0f;
+		}
+	}
+}
+
+void DrawSphere() {
+	for (int yi = 0; yi < resolution; yi++) {							// iterate through each pixel in the image
+		for (int xi = 0; xi < resolution; xi++) {
+
 		}
 	}
 }
@@ -127,8 +218,9 @@ int main(int argc, const char* argv[]) {
 	 * You should see an "RGB square" where the red and blue channels change along the x-axis and the green channel
 	 * changes along the y-axis.
 	 */
-	DummyImage();
+	// DummyImage();
 
+	DrawSquare();
 
 
 	/*
