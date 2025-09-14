@@ -1,4 +1,4 @@
 1. Create virtual environment: python3 -m venv .venv
-2. Activate the environment: source .env/bin/activate
+2. Activate the environment: source .venv/bin/activate
 3. Update your environment: pip3 freeze > requirements.txt
 4. Later, on another machine or fresh set up, just do: pip3 install -r requirements.txt
